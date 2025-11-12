@@ -54,8 +54,7 @@ namespace events_service.Domain.Tests.ValueObjects
             var precioEntrada = new PrecioEntrada(precio);
 
             // Assert
-            // El precio debe tener máximo 2 decimales
-            Assert.True(precioEntrada.Valor >= 0);
+            Assert.Equal(101.00m, precioEntrada.Valor);
         }
 
         [Fact]

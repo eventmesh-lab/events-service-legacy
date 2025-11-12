@@ -84,7 +84,7 @@ namespace events_service.Domain.Tests.Entities
             var capacidad = 100;
 
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new Seccion(nombre, capacidad, null));
+            Assert.Throws<ArgumentNullException>(() => new Seccion(nombre, capacidad, null!));
         }
 
         [Fact]

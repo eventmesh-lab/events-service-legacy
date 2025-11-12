@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentValidation;
-using MediatR;
 using Moq;
 using Xunit;
 using events_service.Application.Commands.CrearEvento;
@@ -28,7 +27,7 @@ namespace events_service.Application.Tests.Commands
             {
                 Nombre = "Concierto de Rock",
                 Descripcion = "Un concierto increíble",
-                Fecha = DateTime.UtcNow.AddDays(30),
+                Fecha = DateTime.Now.AddDays(30),
                 HorasDuracion = 2,
                 MinutosDuracion = 30,
                 Secciones = new List<CrearEventoCommand.SeccionDto>
@@ -39,7 +38,11 @@ namespace events_service.Application.Tests.Commands
                         Capacidad = 500,
                         Precio = 50.00m
                     }
-                }
+                },
+                OrganizadorId = Guid.NewGuid(),
+                VenueId = Guid.NewGuid(),
+                Categoria = "Música",
+                TarifaPublicacion = 100m
             };
 
             // Assert
@@ -56,7 +59,7 @@ namespace events_service.Application.Tests.Commands
             {
                 Nombre = string.Empty,
                 Descripcion = "Descripción",
-                Fecha = DateTime.UtcNow.AddDays(30),
+                Fecha = DateTime.Now.AddDays(30),
                 HorasDuracion = 2,
                 MinutosDuracion = 30,
                 Secciones = new List<CrearEventoCommand.SeccionDto>()
@@ -79,7 +82,7 @@ namespace events_service.Application.Tests.Commands
             {
                 Nombre = "Concierto",
                 Descripcion = "Descripción",
-                Fecha = DateTime.UtcNow.AddDays(30),
+                Fecha = DateTime.Now.AddDays(30),
                 HorasDuracion = 2,
                 MinutosDuracion = 30,
                 Secciones = new List<CrearEventoCommand.SeccionDto>()
@@ -102,7 +105,7 @@ namespace events_service.Application.Tests.Commands
             {
                 Nombre = "Concierto",
                 Descripcion = "Descripción",
-                Fecha = DateTime.UtcNow.AddDays(-1),
+                Fecha = DateTime.Now.AddDays(-1),
                 HorasDuracion = 2,
                 MinutosDuracion = 30,
                 Secciones = new List<CrearEventoCommand.SeccionDto>
@@ -113,7 +116,11 @@ namespace events_service.Application.Tests.Commands
                         Capacidad = 500,
                         Precio = 50.00m
                     }
-                }
+                },
+                OrganizadorId = Guid.NewGuid(),
+                VenueId = Guid.NewGuid(),
+                Categoria = "Música",
+                TarifaPublicacion = 100m
             };
 
             // Act
@@ -129,14 +136,17 @@ namespace events_service.Application.Tests.Commands
         {
             // Arrange
             var mockRepository = new Mock<IEventoRepository>();
-            var mockPublisher = new Mock<IPublisher>();
+            var mockPublisher = new Mock<IDomainEventPublisher>();
+            var mockValidator = new Mock<FluentValidation.IValidator<CrearEventoCommand>>();
+            mockValidator.Setup(v => v.ValidateAsync(It.IsAny<CrearEventoCommand>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new FluentValidation.Results.ValidationResult());
             
-            var handler = new CrearEventoCommandHandler(mockRepository.Object, mockPublisher.Object);
+            var handler = new CrearEventoCommandHandler(mockRepository.Object, mockPublisher.Object, mockValidator.Object);
             var command = new CrearEventoCommand
             {
                 Nombre = "Concierto de Rock",
                 Descripcion = "Un concierto increíble",
-                Fecha = DateTime.UtcNow.AddDays(30),
+                Fecha = DateTime.Now.AddDays(30),
                 HorasDuracion = 2,
                 MinutosDuracion = 30,
                 Secciones = new List<CrearEventoCommand.SeccionDto>
@@ -147,7 +157,11 @@ namespace events_service.Application.Tests.Commands
                         Capacidad = 500,
                         Precio = 50.00m
                     }
-                }
+                },
+                OrganizadorId = Guid.NewGuid(),
+                VenueId = Guid.NewGuid(),
+                Categoria = "Música",
+                TarifaPublicacion = 100m
             };
 
             // Act
@@ -164,14 +178,17 @@ namespace events_service.Application.Tests.Commands
         {
             // Arrange
             var mockRepository = new Mock<IEventoRepository>();
-            var mockPublisher = new Mock<IPublisher>();
+            var mockPublisher = new Mock<IDomainEventPublisher>();
+            var mockValidator = new Mock<FluentValidation.IValidator<CrearEventoCommand>>();
+            mockValidator.Setup(v => v.ValidateAsync(It.IsAny<CrearEventoCommand>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new FluentValidation.Results.ValidationResult());
             
-            var handler = new CrearEventoCommandHandler(mockRepository.Object, mockPublisher.Object);
+            var handler = new CrearEventoCommandHandler(mockRepository.Object, mockPublisher.Object, mockValidator.Object);
             var command = new CrearEventoCommand
             {
                 Nombre = "Concierto de Rock",
                 Descripcion = "Un concierto increíble",
-                Fecha = DateTime.UtcNow.AddDays(30),
+                Fecha = DateTime.Now.AddDays(30),
                 HorasDuracion = 2,
                 MinutosDuracion = 30,
                 Secciones = new List<CrearEventoCommand.SeccionDto>
@@ -182,7 +199,11 @@ namespace events_service.Application.Tests.Commands
                         Capacidad = 500,
                         Precio = 50.00m
                     }
-                }
+                },
+                OrganizadorId = Guid.NewGuid(),
+                VenueId = Guid.NewGuid(),
+                Categoria = "Música",
+                TarifaPublicacion = 100m
             };
 
             // Act
@@ -190,7 +211,7 @@ namespace events_service.Application.Tests.Commands
 
             // Assert
             mockPublisher.Verify(
-                p => p.Publish(It.IsAny<EventoCreado>(), It.IsAny<CancellationToken>()), 
+                p => p.PublishAsync(It.IsAny<EventoCreado>(), It.IsAny<CancellationToken>()), 
                 Times.Once);
         }
 
@@ -199,14 +220,19 @@ namespace events_service.Application.Tests.Commands
         {
             // Arrange
             var mockRepository = new Mock<IEventoRepository>();
-            var mockPublisher = new Mock<IPublisher>();
+            var mockPublisher = new Mock<IDomainEventPublisher>();
+            var mockValidator = new Mock<FluentValidation.IValidator<CrearEventoCommand>>();
+            var validationResult = new FluentValidation.Results.ValidationResult();
+            validationResult.Errors.Add(new FluentValidation.Results.ValidationFailure("Nombre", "El nombre es requerido"));
+            mockValidator.Setup(v => v.ValidateAsync(It.IsAny<CrearEventoCommand>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(validationResult);
             
-            var handler = new CrearEventoCommandHandler(mockRepository.Object, mockPublisher.Object);
+            var handler = new CrearEventoCommandHandler(mockRepository.Object, mockPublisher.Object, mockValidator.Object);
             var command = new CrearEventoCommand
             {
                 Nombre = string.Empty, // Inválido
                 Descripcion = "Descripción",
-                Fecha = DateTime.UtcNow.AddDays(30),
+                Fecha = DateTime.Now.AddDays(30),
                 HorasDuracion = 2,
                 MinutosDuracion = 30,
                 Secciones = new List<CrearEventoCommand.SeccionDto>()

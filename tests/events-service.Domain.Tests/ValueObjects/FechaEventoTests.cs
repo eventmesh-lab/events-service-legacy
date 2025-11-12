@@ -14,7 +14,7 @@ namespace events_service.Domain.Tests.ValueObjects
         public void Constructor_ConFechaValida_CreaInstancia()
         {
             // Arrange
-            var fecha = DateTime.UtcNow.AddDays(30);
+            var fecha = DateTime.Now.AddDays(10);
 
             // Act
             var fechaEvento = new FechaEvento(fecha);
@@ -24,17 +24,10 @@ namespace events_service.Domain.Tests.ValueObjects
         }
 
         [Fact]
-        public void Constructor_ConFechaNula_LanzaExcepcion()
-        {
-            // Arrange & Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new FechaEvento(null));
-        }
-
-        [Fact]
         public void Constructor_ConFechaEnElPasado_LanzaExcepcion()
         {
             // Arrange
-            var fechaPasado = DateTime.UtcNow.AddDays(-1);
+            var fechaPasado = DateTime.Now.AddDays(-1);
 
             // Act & Assert
             var ex = Assert.Throws<ArgumentException>(() => new FechaEvento(fechaPasado));
@@ -42,109 +35,64 @@ namespace events_service.Domain.Tests.ValueObjects
         }
 
         [Fact]
-        public void Constructor_ConFechaHoy_EsValida()
+        public void Equals_ConMismosValores_RetornaTrue()
         {
             // Arrange
-            var fechaHoy = DateTime.UtcNow.Date;
-
-            // Act
-            var fechaEvento = new FechaEvento(fechaHoy);
-
-            // Assert
-            Assert.Equal(fechaHoy, fechaEvento.Valor.Date);
-        }
-
-        [Fact]
-        public void Equals_ConMismaFecha_RetornaTrue()
-        {
-            // Arrange
-            var fecha = DateTime.UtcNow.AddDays(30).Date;
+            var fecha = DateTime.Now.AddDays(3);
             var fechaEvento1 = new FechaEvento(fecha);
             var fechaEvento2 = new FechaEvento(fecha);
 
             // Act
-            var sonIguales = fechaEvento1.Equals(fechaEvento2);
+            var igualdad = fechaEvento1.Equals(fechaEvento2);
 
             // Assert
-            Assert.True(sonIguales);
+            Assert.True(igualdad);
+            Assert.True(fechaEvento1 == fechaEvento2);
         }
 
         [Fact]
         public void Equals_ConFechasDiferentes_RetornaFalse()
         {
             // Arrange
-            var fecha1 = DateTime.UtcNow.AddDays(30).Date;
-            var fecha2 = DateTime.UtcNow.AddDays(31).Date;
-            var fechaEvento1 = new FechaEvento(fecha1);
-            var fechaEvento2 = new FechaEvento(fecha2);
-
-            // Act
-            var sonIguales = fechaEvento1.Equals(fechaEvento2);
-
-            // Assert
-            Assert.False(sonIguales);
-        }
-
-        [Fact]
-        public void GetHashCode_ConMismaFecha_RetornaMismoHash()
-        {
-            // Arrange
-            var fecha = DateTime.UtcNow.AddDays(30).Date;
+            var fecha = DateTime.Now.AddDays(3);
+            var otraFecha = DateTime.Now.AddDays(4);
             var fechaEvento1 = new FechaEvento(fecha);
-            var fechaEvento2 = new FechaEvento(fecha);
+            var fechaEvento2 = new FechaEvento(otraFecha);
 
             // Act
-            var hash1 = fechaEvento1.GetHashCode();
-            var hash2 = fechaEvento2.GetHashCode();
+            var igualdad = fechaEvento1.Equals(fechaEvento2);
 
             // Assert
-            Assert.Equal(hash1, hash2);
+            Assert.False(igualdad);
+            Assert.True(fechaEvento1 != fechaEvento2);
         }
 
         [Fact]
-        public void OperadorIgualdad_ConMismaFecha_RetornaTrue()
+        public void HaComenzado_CuandoFechaMenorOIgualReferencia_RetornaTrue()
         {
             // Arrange
-            var fecha = DateTime.UtcNow.AddDays(30).Date;
-            var fechaEvento1 = new FechaEvento(fecha);
-            var fechaEvento2 = new FechaEvento(fecha);
-
-            // Act
-            var sonIguales = fechaEvento1 == fechaEvento2;
-
-            // Assert
-            Assert.True(sonIguales);
-        }
-
-        [Fact]
-        public void OperadorDesigualdad_ConFechasDiferentes_RetornaTrue()
-        {
-            // Arrange
-            var fecha1 = DateTime.UtcNow.AddDays(30).Date;
-            var fecha2 = DateTime.UtcNow.AddDays(31).Date;
-            var fechaEvento1 = new FechaEvento(fecha1);
-            var fechaEvento2 = new FechaEvento(fecha2);
-
-            // Act
-            var sonDiferentes = fechaEvento1 != fechaEvento2;
-
-            // Assert
-            Assert.True(sonDiferentes);
-        }
-
-        [Fact]
-        public void Valor_EsInmutable_NoPuedeModificarse()
-        {
-            // Arrange
-            var fecha = DateTime.UtcNow.AddDays(30).Date;
+            var fecha = DateTime.Now.AddMinutes(1);
             var fechaEvento = new FechaEvento(fecha);
-            var fechaOriginal = fechaEvento.Valor;
 
-            // Act - Intentar modificar la fecha subyacente no debería afectar el Value Object
-            // (Esto valida que el Value Object encapsula correctamente el valor)
+            // Act
+            var haComenzado = fechaEvento.HaComenzado(DateTime.Now.AddMinutes(2));
 
             // Assert
-            Assert.Equal(fechaOriginal, fechaEvento.Valor);
+            Assert.True(haComenzado);
+        }
+
+        [Fact]
+        public void HaComenzado_CuandoFechaMayorReferencia_RetornaFalse()
+        {
+            // Arrange
+            var fecha = DateTime.Now.AddDays(1);
+            var fechaEvento = new FechaEvento(fecha);
+
+            // Act
+            var haComenzado = fechaEvento.HaComenzado(DateTime.Now);
+
+            // Assert
+            Assert.False(haComenzado);
         }
     }
 }

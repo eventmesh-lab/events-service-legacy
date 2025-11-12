@@ -51,7 +51,9 @@ namespace events_service.Domain.Tests.ValueObjects
 
         [Theory]
         [InlineData("Borrador")]
+        [InlineData("PendientePago")]
         [InlineData("Publicado")]
+        [InlineData("EnCurso")]
         [InlineData("Finalizado")]
         [InlineData("Cancelado")]
         public void Constructor_ConEstadosValidos_CreaInstancia(string estado)
@@ -77,6 +79,16 @@ namespace events_service.Domain.Tests.ValueObjects
         }
 
         [Fact]
+        public void EsPendientePago_ConEstadoPendientePago_RetornaTrue()
+        {
+            // Arrange
+            var estado = new EstadoEvento("PendientePago");
+
+            // Act & Assert
+            Assert.True(estado.EsPendientePago);
+        }
+
+        [Fact]
         public void EsPublicado_ConEstadoPublicado_RetornaTrue()
         {
             // Arrange
@@ -87,6 +99,16 @@ namespace events_service.Domain.Tests.ValueObjects
 
             // Assert
             Assert.True(esPublicado);
+        }
+
+        [Fact]
+        public void EsEnCurso_ConEstadoEnCurso_RetornaTrue()
+        {
+            // Arrange
+            var estado = new EstadoEvento("EnCurso");
+
+            // Act & Assert
+            Assert.True(estado.EsEnCurso);
         }
 
         [Fact]
@@ -116,28 +138,56 @@ namespace events_service.Domain.Tests.ValueObjects
         }
 
         [Fact]
-        public void PuedeTransicionarA_DeBorradorAPublicado_RetornaTrue()
+        public void PuedeTransicionarA_DeBorradorAPendientePago_RetornaTrue()
         {
             // Arrange
             var estadoBorrador = new EstadoEvento("Borrador");
-            var estadoPublicado = new EstadoEvento("Publicado");
+            var estadoPendientePago = new EstadoEvento("PendientePago");
 
             // Act
-            var puedeTransicionar = estadoBorrador.PuedeTransicionarA(estadoPublicado);
+            var puedeTransicionar = estadoBorrador.PuedeTransicionarA(estadoPendientePago);
 
             // Assert
             Assert.True(puedeTransicionar);
         }
 
         [Fact]
-        public void PuedeTransicionarA_DePublicadoAFinalizado_RetornaTrue()
+        public void PuedeTransicionarA_DePendientePagoAPublicado_RetornaTrue()
+        {
+            // Arrange
+            var estadoPendientePago = new EstadoEvento("PendientePago");
+            var estadoPublicado = new EstadoEvento("Publicado");
+
+            // Act
+            var puedeTransicionar = estadoPendientePago.PuedeTransicionarA(estadoPublicado);
+
+            // Assert
+            Assert.True(puedeTransicionar);
+        }
+
+        [Fact]
+        public void PuedeTransicionarA_DePublicadoAEnCurso_RetornaTrue()
         {
             // Arrange
             var estadoPublicado = new EstadoEvento("Publicado");
+            var estadoEnCurso = new EstadoEvento("EnCurso");
+
+            // Act
+            var puedeTransicionar = estadoPublicado.PuedeTransicionarA(estadoEnCurso);
+
+            // Assert
+            Assert.True(puedeTransicionar);
+        }
+
+        [Fact]
+        public void PuedeTransicionarA_DeEnCursoAFinalizado_RetornaTrue()
+        {
+            // Arrange
+            var estadoEnCurso = new EstadoEvento("EnCurso");
             var estadoFinalizado = new EstadoEvento("Finalizado");
 
             // Act
-            var puedeTransicionar = estadoPublicado.PuedeTransicionarA(estadoFinalizado);
+            var puedeTransicionar = estadoEnCurso.PuedeTransicionarA(estadoFinalizado);
 
             // Assert
             Assert.True(puedeTransicionar);
@@ -155,6 +205,20 @@ namespace events_service.Domain.Tests.ValueObjects
 
             // Assert
             Assert.True(puedeTransicionar);
+        }
+
+        [Fact]
+        public void PuedeTransicionarA_DePendientePagoABorrador_RetornaFalse()
+        {
+            // Arrange
+            var estadoPendientePago = new EstadoEvento("PendientePago");
+            var estadoBorrador = new EstadoEvento("Borrador");
+
+            // Act
+            var puedeTransicionar = estadoPendientePago.PuedeTransicionarA(estadoBorrador);
+
+            // Assert
+            Assert.False(puedeTransicionar);
         }
 
         [Fact]

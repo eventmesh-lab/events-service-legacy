@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using FluentValidation;
 using Moq;
 using Xunit;
-using events_service.Application.Commands.PublicarEvento;
+using events_service.Application.Commands.PagarPublicacion;
 using events_service.Domain.Entities;
 using events_service.Domain.Events;
 using events_service.Domain.Ports;
@@ -14,19 +14,20 @@ using events_service.Domain.ValueObjects;
 namespace events_service.Application.Tests.Commands
 {
     /// <summary>
-    /// Pruebas para el comando PublicarEventoCommand y su handler.
+    /// Pruebas para validar el comportamiento del comando PagarPublicacionCommand y su handler.
     /// </summary>
-    public class PublicarEventoCommandTests
+    public class PagarPublicacionCommandTests
     {
         [Fact]
-        public void PublicarEventoCommandValidator_ConPagoConfirmadoVacio_FallaValidacion()
+        public void PagarPublicacionCommandValidator_ConMontoNoPositivo_FallaValidacion()
         {
             // Arrange
-            var validator = new PublicarEventoCommandValidator();
-            var command = new PublicarEventoCommand
+            var validator = new PagarPublicacionCommandValidator();
+            var command = new PagarPublicacionCommand
             {
                 EventoId = Guid.NewGuid(),
-                PagoConfirmadoId = Guid.Empty
+                TransaccionPagoId = Guid.NewGuid(),
+                Monto = 0
             };
 
             // Act
@@ -37,14 +38,15 @@ namespace events_service.Application.Tests.Commands
         }
 
         [Fact]
-        public async Task PublicarEventoCommandHandler_ConEventoPendientePago_PublicaEvento()
+        public async Task PagarPublicacionCommandHandler_ConDatosValidos_CambiaEstadoAPendientePago()
         {
             // Arrange
-            var evento = CrearEventoPendienteDePublicacion();
-            var command = new PublicarEventoCommand
+            var evento = CrearEventoBorrador();
+            var command = new PagarPublicacionCommand
             {
                 EventoId = evento.Id,
-                PagoConfirmadoId = evento.TransaccionPagoId!.Value
+                TransaccionPagoId = Guid.NewGuid(),
+                Monto = evento.TarifaPublicacion
             };
 
             var repositoryMock = new Mock<IEventoRepository>();
@@ -52,29 +54,31 @@ namespace events_service.Application.Tests.Commands
                 .ReturnsAsync(evento);
 
             var publisherMock = new Mock<IDomainEventPublisher>();
-            var validatorMock = new Mock<IValidator<PublicarEventoCommand>>();
-            validatorMock.Setup(v => v.ValidateAsync(It.IsAny<PublicarEventoCommand>(), It.IsAny<CancellationToken>()))
+            var validatorMock = new Mock<IValidator<PagarPublicacionCommand>>();
+            validatorMock.Setup(v => v.ValidateAsync(It.IsAny<PagarPublicacionCommand>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new FluentValidation.Results.ValidationResult());
 
-            var handler = new PublicarEventoCommandHandler(repositoryMock.Object, publisherMock.Object, validatorMock.Object);
+            var handler = new PagarPublicacionCommandHandler(repositoryMock.Object, publisherMock.Object, validatorMock.Object);
 
             // Act
             await handler.Handle(command, CancellationToken.None);
 
             // Assert
-            Assert.True(evento.Estado.EsPublicado);
+            Assert.True(evento.Estado.EsPendientePago);
+            Assert.Equal(command.TransaccionPagoId, evento.TransaccionPagoId);
             repositoryMock.Verify(r => r.UpdateAsync(evento, It.IsAny<CancellationToken>()), Times.Once);
-            publisherMock.Verify(p => p.PublishAsync(It.IsAny<EventoPublicado>(), It.IsAny<CancellationToken>()), Times.Once);
+            publisherMock.Verify(p => p.PublishAsync(It.IsAny<PagoPublicacionIniciado>(), It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]
-        public async Task PublicarEventoCommandHandler_CuandoEventoNoExiste_LanzaExcepcion()
+        public async Task PagarPublicacionCommandHandler_CuandoEventoNoExiste_LanzaExcepcion()
         {
             // Arrange
-            var command = new PublicarEventoCommand
+            var command = new PagarPublicacionCommand
             {
                 EventoId = Guid.NewGuid(),
-                PagoConfirmadoId = Guid.NewGuid()
+                TransaccionPagoId = Guid.NewGuid(),
+                Monto = 100m
             };
 
             var repositoryMock = new Mock<IEventoRepository>();
@@ -82,38 +86,33 @@ namespace events_service.Application.Tests.Commands
                 .ReturnsAsync((Evento?)null);
 
             var publisherMock = new Mock<IDomainEventPublisher>();
-            var validatorMock = new Mock<IValidator<PublicarEventoCommand>>();
-            validatorMock.Setup(v => v.ValidateAsync(It.IsAny<PublicarEventoCommand>(), It.IsAny<CancellationToken>()))
+            var validatorMock = new Mock<IValidator<PagarPublicacionCommand>>();
+            validatorMock.Setup(v => v.ValidateAsync(It.IsAny<PagarPublicacionCommand>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new FluentValidation.Results.ValidationResult());
 
-            var handler = new PublicarEventoCommandHandler(repositoryMock.Object, publisherMock.Object, validatorMock.Object);
+            var handler = new PagarPublicacionCommandHandler(repositoryMock.Object, publisherMock.Object, validatorMock.Object);
 
             // Act & Assert
             await Assert.ThrowsAsync<InvalidOperationException>(() => handler.Handle(command, CancellationToken.None));
         }
 
-        private static Evento CrearEventoPendienteDePublicacion()
+        private static Evento CrearEventoBorrador()
         {
             var secciones = new[]
             {
                 new Seccion("General", 100, new PrecioEntrada(50m))
             };
 
-            var evento = Evento.Crear(
+            return Evento.Crear(
                 "Evento",
                 "Descripción",
-                new FechaEvento(DateTime.UtcNow.AddDays(3)),
+                new FechaEvento(DateTime.UtcNow.AddDays(5)),
                 new DuracionEvento(2, 0),
                 Guid.NewGuid(),
                 Guid.NewGuid(),
                 "Música",
                 100m,
                 secciones);
-
-            var transaccionId = Guid.NewGuid();
-            evento.PagarPublicacion(transaccionId, evento.TarifaPublicacion);
-            return evento;
         }
     }
 }
-

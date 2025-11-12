@@ -17,301 +17,245 @@ namespace events_service.Domain.Tests.Entities
         #region Creación
 
         [Fact]
-        public void Crear_ConParametrosValidos_CreaEventoEnEstadoBorrador()
+        public void Crear_ConParametrosValidos_CreaEventoEnBorrador()
         {
-            // Arrange
-            var nombre = "Concierto de Rock";
-            var descripcion = "Un concierto increíble";
-            var fecha = DateTime.UtcNow.AddDays(30);
-            var duracion = new DuracionEvento(2, 30);
-            var secciones = new List<Seccion>
-            {
-                new Seccion("General", 500, new PrecioEntrada(50.00m))
-            };
-
             // Act
-            var evento = Evento.Crear(nombre, descripcion, fecha, duracion, secciones);
+            var evento = CrearEventoBorrador();
 
             // Assert
             Assert.NotNull(evento);
-            Assert.Equal(nombre, evento.Nombre);
-            Assert.Equal(descripcion, evento.Descripcion);
             Assert.True(evento.Estado.EsBorrador);
+            Assert.Equal(Categoria, evento.Categoria);
+            Assert.Equal(Tarifa, evento.TarifaPublicacion);
             Assert.NotEqual(Guid.Empty, evento.Id);
-            Assert.Single(evento.Secciones);
+            Assert.Equal(1, evento.Version);
+
+            var domainEvents = evento.GetDomainEvents();
+            Assert.Single(domainEvents);
+            Assert.IsType<EventoCreado>(domainEvents.First());
         }
 
         [Fact]
-        public void Crear_ConNombreNulo_LanzaExcepcion()
+        public void Crear_SinSecciones_LanzaExcepcion()
         {
             // Arrange
-            var descripcion = "Descripción";
-            var fecha = DateTime.UtcNow.AddDays(30);
-            var duracion = new DuracionEvento(2, 30);
-            var secciones = new List<Seccion>
+            var fecha = new FechaEvento(DateTime.Now.AddDays(1));
+
+            // Act & Assert
+            Assert.Throws<ArgumentException>(() =>
+                Evento.Crear(NombreEvento, Descripcion, fecha, Duracion, OrganizadorId, VenueId, Categoria, Tarifa, new List<Seccion>()));
+        }
+
+        [Fact]
+        public void Editar_EnBorrador_ActualizaDatosYGeneraEvento()
+        {
+            // Arrange
+            var evento = CrearEventoBorrador();
+            evento.ClearDomainEvents();
+            var fechaActualizada = new FechaEvento(DateTime.Now.AddDays(5));
+            var nuevasSecciones = new[]
             {
-                new Seccion("General", 500, new PrecioEntrada(50.00m))
-            };
-
-            // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => 
-                Evento.Crear(null, descripcion, fecha, duracion, secciones));
-        }
-
-        [Fact]
-        public void Crear_ConNombreVacio_LanzaExcepcion()
-        {
-            // Arrange
-            var descripcion = "Descripción";
-            var fecha = DateTime.UtcNow.AddDays(30);
-            var duracion = new DuracionEvento(2, 30);
-            var secciones = new List<Seccion>
-            {
-                new Seccion("General", 500, new PrecioEntrada(50.00m))
-            };
-
-            // Act & Assert
-            var ex = Assert.Throws<ArgumentException>(() => 
-                Evento.Crear(string.Empty, descripcion, fecha, duracion, secciones));
-            Assert.Contains("nombre", ex.Message, StringComparison.OrdinalIgnoreCase);
-        }
-
-        [Fact]
-        public void Crear_ConListaSeccionesVacia_LanzaExcepcion()
-        {
-            // Arrange
-            var nombre = "Concierto";
-            var descripcion = "Descripción";
-            var fecha = DateTime.UtcNow.AddDays(30);
-            var duracion = new DuracionEvento(2, 30);
-            var secciones = new List<Seccion>();
-
-            // Act & Assert
-            var ex = Assert.Throws<ArgumentException>(() => 
-                Evento.Crear(nombre, descripcion, fecha, duracion, secciones));
-            Assert.Contains("sección", ex.Message, StringComparison.OrdinalIgnoreCase);
-        }
-
-        [Fact]
-        public void Crear_ConSeccionesNulas_LanzaExcepcion()
-        {
-            // Arrange
-            var nombre = "Concierto";
-            var descripcion = "Descripción";
-            var fecha = DateTime.UtcNow.AddDays(30);
-            var duracion = new DuracionEvento(2, 30);
-
-            // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => 
-                Evento.Crear(nombre, descripcion, fecha, duracion, null));
-        }
-
-        [Fact]
-        public void Crear_GeneraEventoDeDominioEventoCreado()
-        {
-            // Arrange
-            var nombre = "Concierto";
-            var descripcion = "Descripción";
-            var fecha = DateTime.UtcNow.AddDays(30);
-            var duracion = new DuracionEvento(2, 30);
-            var secciones = new List<Seccion>
-            {
-                new Seccion("General", 500, new PrecioEntrada(50.00m))
+                new Seccion("VIP", 50, new PrecioEntrada(200m))
             };
 
             // Act
-            var evento = Evento.Crear(nombre, descripcion, fecha, duracion, secciones);
+            evento.Editar("Evento Actualizado", "Nueva descripción", fechaActualizada, new DuracionEvento(1, 0), "Música", nuevasSecciones);
 
             // Assert
-            var eventos = evento.GetDomainEvents();
-            Assert.Single(eventos);
-            Assert.IsType<EventoCreado>(eventos.First());
+            Assert.Equal("Evento Actualizado", evento.Nombre);
+            Assert.Equal("Nueva descripción", evento.Descripcion);
+            Assert.Equal("Música", evento.Categoria);
+            Assert.Single(evento.Secciones);
+            Assert.Equal(2, evento.Version);
+
+            var domainEvents = evento.GetDomainEvents();
+            Assert.Single(domainEvents);
+            Assert.IsType<EventoEditado>(domainEvents.First());
         }
 
-        #endregion
-
-        #region Publicación
-
         [Fact]
-        public void Publicar_ConEventoEnBorrador_CambiaEstadoAPublicado()
+        public void Editar_FueraDeBorrador_LanzaExcepcion()
         {
             // Arrange
-            var evento = CrearEventoEnBorrador();
+            var evento = CrearEventoBorrador();
+            evento.PagarPublicacion(Guid.NewGuid(), Tarifa);
+
+            // Act & Assert
+            Assert.Throws<InvalidOperationException>(() =>
+                evento.Editar(NombreEvento, Descripcion, evento.Fecha, Duracion, Categoria, evento.Secciones));
+        }
+
+        [Fact]
+        public void PagarPublicacion_ConMontoCorrecto_MarcaPendientePago()
+        {
+            // Arrange
+            var evento = CrearEventoBorrador();
+            evento.ClearDomainEvents();
+            var transaccion = Guid.NewGuid();
 
             // Act
-            evento.Publicar();
+            evento.PagarPublicacion(transaccion, Tarifa);
+
+            // Assert
+            Assert.True(evento.Estado.EsPendientePago);
+            Assert.Equal(transaccion, evento.TransaccionPagoId);
+            Assert.Equal(2, evento.Version);
+
+            var domainEvents = evento.GetDomainEvents();
+            Assert.Single(domainEvents);
+            var pagoEvento = Assert.IsType<PagoPublicacionIniciado>(domainEvents.First());
+            Assert.Equal(transaccion, pagoEvento.TransaccionPagoId);
+            Assert.Equal(Tarifa, pagoEvento.Monto);
+        }
+
+        [Fact]
+        public void PagarPublicacion_ConMontoIncorrecto_LanzaExcepcion()
+        {
+            // Arrange
+            var evento = CrearEventoBorrador();
+
+            // Act & Assert
+            Assert.Throws<InvalidOperationException>(() => evento.PagarPublicacion(Guid.NewGuid(), Tarifa + 10));
+        }
+
+        [Fact]
+        public void Publicar_ConPagoConfirmado_CambiaAPublicadoYEmiteEvento()
+        {
+            // Arrange
+            var evento = CrearEventoBorrador();
+            var transaccion = Guid.NewGuid();
+            evento.PagarPublicacion(transaccion, Tarifa);
+            evento.ClearDomainEvents();
+            var fechaPublicacion = DateTime.Now;
+
+            // Act
+            evento.Publicar(transaccion, fechaPublicacion);
 
             // Assert
             Assert.True(evento.Estado.EsPublicado);
+            Assert.Null(evento.TransaccionPagoId);
+            Assert.Equal(fechaPublicacion, evento.FechaPublicacion);
+
+            var domainEvents = evento.GetDomainEvents();
+            Assert.Single(domainEvents);
+            var publicado = Assert.IsType<EventoPublicado>(domainEvents.First());
+            Assert.Equal(evento.Id, publicado.EventoId);
+            Assert.Equal(evento.OrganizadorId, publicado.OrganizadorId);
         }
 
         [Fact]
-        public void Publicar_ConEventoEnBorrador_GeneraEventoDeDominioEventoPublicado()
+        public void Publicar_ConTransaccionDiferente_LanzaExcepcion()
         {
             // Arrange
-            var evento = CrearEventoEnBorrador();
-            evento.ClearDomainEvents(); // Limpiar eventos previos
+            var evento = CrearEventoBorrador();
+            var transaccion = Guid.NewGuid();
+            evento.PagarPublicacion(transaccion, Tarifa);
+
+            // Act & Assert
+            Assert.Throws<InvalidOperationException>(() => evento.Publicar(Guid.NewGuid(), DateTime.Now));
+        }
+
+        [Fact]
+        public void Iniciar_ConFechaAlcanzada_CambiaAEnCurso()
+        {
+            // Arrange
+            var evento = CrearEventoBorrador(fecha: DateTime.Now.AddMinutes(1));
+            var transaccion = Guid.NewGuid();
+            evento.PagarPublicacion(transaccion, Tarifa);
+            var fechaPublicacion = DateTime.Now;
+            evento.Publicar(transaccion, fechaPublicacion);
+            evento.ClearDomainEvents();
+
+            var fechaInicio = evento.Fecha.Valor.AddMinutes(1);
 
             // Act
-            evento.Publicar();
+            evento.Iniciar(fechaInicio);
 
             // Assert
-            var eventos = evento.GetDomainEvents();
-            Assert.Single(eventos);
-            Assert.IsType<EventoPublicado>(eventos.First());
+            Assert.True(evento.Estado.EsEnCurso);
+            var domainEvents = evento.GetDomainEvents();
+            Assert.Single(domainEvents);
+            Assert.IsType<EventoIniciado>(domainEvents.First());
         }
 
         [Fact]
-        public void Publicar_ConEventoYaPublicado_LanzaExcepcion()
+        public void Finalizar_DesdeEnCurso_CambiaAFinalizado()
         {
             // Arrange
-            var evento = CrearEventoEnBorrador();
-            evento.Publicar(); // Primera publicación
+            var evento = CrearEventoBorrador(fecha: DateTime.Now.AddMinutes(1));
+            var transaccion = Guid.NewGuid();
+            evento.PagarPublicacion(transaccion, Tarifa);
+            evento.Publicar(transaccion, DateTime.Now);
+            evento.Iniciar(evento.Fecha.Valor);
+            evento.ClearDomainEvents();
 
-            // Act & Assert
-            var ex = Assert.Throws<InvalidOperationException>(() => evento.Publicar());
-            Assert.Contains("estado", ex.Message, StringComparison.OrdinalIgnoreCase);
-        }
-
-        [Fact]
-        public void Publicar_ConEventoFinalizado_LanzaExcepcion()
-        {
-            // Arrange
-            var evento = CrearEventoEnBorrador();
-            evento.Publicar();
-            evento.Finalizar();
-
-            // Act & Assert
-            var ex = Assert.Throws<InvalidOperationException>(() => evento.Publicar());
-            Assert.Contains("estado", ex.Message, StringComparison.OrdinalIgnoreCase);
-        }
-
-        [Fact]
-        public void Publicar_ConEventoCancelado_LanzaExcepcion()
-        {
-            // Arrange
-            var evento = CrearEventoEnBorrador();
-            evento.Cancelar();
-
-            // Act & Assert
-            var ex = Assert.Throws<InvalidOperationException>(() => evento.Publicar());
-            Assert.Contains("estado", ex.Message, StringComparison.OrdinalIgnoreCase);
-        }
-
-        #endregion
-
-        #region Secciones
-
-        [Fact]
-        public void AgregarSeccion_ConSeccionValida_AgregaSeccion()
-        {
-            // Arrange
-            var evento = CrearEventoEnBorrador();
-            var nuevaSeccion = new Seccion("VIP", 50, new PrecioEntrada(150.00m));
+            var fechaFinalizacion = DateTime.Now.AddMinutes(5);
 
             // Act
-            evento.AgregarSeccion(nuevaSeccion);
-
-            // Assert
-            Assert.Equal(2, evento.Secciones.Count);
-            Assert.Contains(nuevaSeccion, evento.Secciones);
-        }
-
-        [Fact]
-        public void AgregarSeccion_ConSeccionDuplicada_LanzaExcepcion()
-        {
-            // Arrange
-            var evento = CrearEventoEnBorrador();
-            var seccionExistente = evento.Secciones.First();
-
-            // Act & Assert
-            var ex = Assert.Throws<InvalidOperationException>(() => 
-                evento.AgregarSeccion(seccionExistente));
-            Assert.Contains("duplicada", ex.Message, StringComparison.OrdinalIgnoreCase);
-        }
-
-        [Fact]
-        public void AgregarSeccion_ConSeccionNula_LanzaExcepcion()
-        {
-            // Arrange
-            var evento = CrearEventoEnBorrador();
-
-            // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => evento.AgregarSeccion(null));
-        }
-
-        #endregion
-
-        #region Finalización y Cancelación
-
-        [Fact]
-        public void Finalizar_ConEventoPublicado_CambiaEstadoAFinalizado()
-        {
-            // Arrange
-            var evento = CrearEventoEnBorrador();
-            evento.Publicar();
-
-            // Act
-            evento.Finalizar();
+            evento.Finalizar(fechaFinalizacion);
 
             // Assert
             Assert.True(evento.Estado.EsFinalizado);
+            var domainEvents = evento.GetDomainEvents();
+            Assert.Single(domainEvents);
+            Assert.IsType<EventoFinalizado>(domainEvents.First());
         }
 
         [Fact]
-        public void Finalizar_ConEventoEnBorrador_LanzaExcepcion()
+        public void Cancelar_DesdePublicado_CambiaACanceladoYEmiteEvento()
         {
             // Arrange
-            var evento = CrearEventoEnBorrador();
+            var evento = CrearEventoBorrador();
+            var transaccion = Guid.NewGuid();
+            evento.PagarPublicacion(transaccion, Tarifa);
+            evento.Publicar(transaccion, DateTime.Now);
+            evento.ClearDomainEvents();
+
+            // Act
+            evento.Cancelar("Motivo");
+
+            // Assert
+            Assert.True(evento.Estado.EsCancelado);
+            var domainEvents = evento.GetDomainEvents();
+            Assert.Single(domainEvents);
+            Assert.IsType<EventoCancelado>(domainEvents.First());
+        }
+
+        [Fact]
+        public void Cancelar_EnCurso_LanzaExcepcion()
+        {
+            // Arrange
+            var evento = CrearEventoBorrador(fecha: DateTime.Now.AddMinutes(1));
+            var transaccion = Guid.NewGuid();
+            evento.PagarPublicacion(transaccion, Tarifa);
+            evento.Publicar(transaccion, DateTime.Now);
+            evento.Iniciar(evento.Fecha.Valor);
 
             // Act & Assert
-            var ex = Assert.Throws<InvalidOperationException>(() => evento.Finalizar());
-            Assert.Contains("estado", ex.Message, StringComparison.OrdinalIgnoreCase);
-        }
-
-        [Fact]
-        public void Cancelar_ConEventoEnBorrador_CambiaEstadoACancelado()
-        {
-            // Arrange
-            var evento = CrearEventoEnBorrador();
-
-            // Act
-            evento.Cancelar();
-
-            // Assert
-            Assert.True(evento.Estado.EsCancelado);
-        }
-
-        [Fact]
-        public void Cancelar_ConEventoPublicado_CambiaEstadoACancelado()
-        {
-            // Arrange
-            var evento = CrearEventoEnBorrador();
-            evento.Publicar();
-
-            // Act
-            evento.Cancelar();
-
-            // Assert
-            Assert.True(evento.Estado.EsCancelado);
+            Assert.Throws<InvalidOperationException>(() => evento.Cancelar("Motivo"));
         }
 
         #endregion
 
         #region Helpers
 
-        private Evento CrearEventoEnBorrador()
+        private static readonly Guid OrganizadorId = Guid.NewGuid();
+        private static readonly Guid VenueId = Guid.NewGuid();
+        private const string NombreEvento = "Concierto de Rock";
+        private const string Descripcion = "Evento de prueba";
+        private const string Categoria = "Música";
+        private const decimal Tarifa = 100m;
+        private static readonly DuracionEvento Duracion = new(2, 0);
+
+        private Evento CrearEventoBorrador(DateTime? fecha = null)
         {
-            var nombre = "Concierto de Rock";
-            var descripcion = "Un concierto increíble";
-            var fecha = DateTime.UtcNow.AddDays(30);
-            var duracion = new DuracionEvento(2, 30);
+            var fechaEvento = new FechaEvento(fecha ?? DateTime.Now.AddDays(10));
             var secciones = new List<Seccion>
             {
                 new Seccion("General", 500, new PrecioEntrada(50.00m))
             };
 
-            return Evento.Crear(nombre, descripcion, fecha, duracion, secciones);
+            return Evento.Crear(NombreEvento, Descripcion, fechaEvento, Duracion, OrganizadorId, VenueId, Categoria, Tarifa, secciones);
         }
 
         #endregion

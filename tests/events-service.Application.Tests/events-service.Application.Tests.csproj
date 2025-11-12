@@ -18,7 +18,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\events-service.Application\events-service.Application.csproj" />
-    <ProjectReference Include="..\..\src\events-service.Domain\events-service.Domain.csproj" />
+    <ProjectReference Include="..\..\src\events-service..Domain\events-service.Domain.csproj" />
   </ItemGroup>
 
 </Project>

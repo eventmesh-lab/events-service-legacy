@@ -58,6 +58,17 @@ namespace events_service.Domain.Tests.ValueObjects
         }
 
         [Fact]
+        public void Constructor_ConDuracionDeVeinticuatroHoras_EsValido()
+        {
+            // Arrange & Act
+            var duracion = new DuracionEvento(24, 0);
+
+            // Assert
+            Assert.Equal(24, duracion.Horas);
+            Assert.Equal(0, duracion.Minutos);
+        }
+
+        [Fact]
         public void Constructor_ConHorasCeroYMinutosPositivos_EsValido()
         {
             // Arrange
@@ -84,6 +95,19 @@ namespace events_service.Domain.Tests.ValueObjects
 
             // Assert
             Assert.Equal((horas * 60) + minutos, totalMinutos);
+        }
+
+        [Fact]
+        public void ComoTimeSpan_RegresaTimeSpanEquivalente()
+        {
+            // Arrange
+            var duracion = new DuracionEvento(1, 45);
+
+            // Act
+            var timespan = duracion.ComoTimeSpan;
+
+            // Assert
+            Assert.Equal(TimeSpan.FromMinutes(105), timespan);
         }
 
         [Fact]
