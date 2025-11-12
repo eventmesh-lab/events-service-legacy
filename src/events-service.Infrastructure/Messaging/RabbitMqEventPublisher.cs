@@ -3,9 +3,9 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using MediatR;
 using RabbitMQ.Client;
 using events_service.Domain.Events;
+using events_service.Domain.Ports;
 
 namespace events_service.Infrastructure.Messaging
 {

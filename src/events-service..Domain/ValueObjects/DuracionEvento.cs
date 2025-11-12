@@ -23,6 +23,11 @@ namespace events_service.Domain.ValueObjects
         public int TotalMinutos => (Horas * 60) + Minutos;
 
         /// <summary>
+        /// Duración expresada como <see cref="TimeSpan"/>.
+        /// </summary>
+        public TimeSpan ComoTimeSpan => TimeSpan.FromMinutes(TotalMinutos);
+
+        /// <summary>
         /// Crea una nueva instancia de DuracionEvento.
         /// </summary>
         /// <param name="horas">Horas de duración. Debe ser mayor o igual a 0.</param>

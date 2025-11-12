@@ -2,6 +2,7 @@ using System;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using RabbitMQ.Client;
+using events_service.Domain.Ports;
 
 namespace events_service.Infrastructure.Messaging
 {

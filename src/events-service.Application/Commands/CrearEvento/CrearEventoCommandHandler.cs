@@ -9,7 +9,6 @@ using events_service.Domain.Entities;
 using events_service.Domain.Events;
 using events_service.Domain.Ports;
 using events_service.Domain.ValueObjects;
-using events_service.Infrastructure.Messaging;
 
 namespace events_service.Application.Commands.CrearEvento
 {
@@ -20,22 +19,22 @@ namespace events_service.Application.Commands.CrearEvento
     public class CrearEventoCommandHandler : IRequestHandler<CrearEventoCommand, CrearEventoCommandResponse>
     {
         private readonly IEventoRepository _repository;
-        private readonly IPublisher _publisher;
+        private readonly IDomainEventPublisher _domainEventPublisher;
         private readonly IValidator<CrearEventoCommand> _validator;
 
         /// <summary>
         /// Inicializa una nueva instancia del handler.
         /// </summary>
         /// <param name="repository">Repositorio de eventos.</param>
-        /// <param name="publisher">Publicador de eventos de dominio.</param>
+        /// <param name="domainEventPublisher">Publicador de eventos de dominio.</param>
         /// <param name="validator">Validador del comando.</param>
         public CrearEventoCommandHandler(
             IEventoRepository repository,
-            IPublisher publisher,
+            IDomainEventPublisher domainEventPublisher,
             IValidator<CrearEventoCommand> validator)
         {
             _repository = repository ?? throw new ArgumentNullException(nameof(repository));
-            _publisher = publisher ?? throw new ArgumentNullException(nameof(publisher));
+            _domainEventPublisher = domainEventPublisher ?? throw new ArgumentNullException(nameof(domainEventPublisher));
             _validator = validator ?? throw new ArgumentNullException(nameof(validator));
         }
 
@@ -56,7 +55,8 @@ namespace events_service.Application.Commands.CrearEvento
 
             // Mapear comando a entidades del dominio
             var duracion = new DuracionEvento(request.HorasDuracion, request.MinutosDuracion);
-            var secciones = request.Secciones.Select(s => 
+            var fechaEvento = new FechaEvento(request.Fecha);
+            var secciones = request.Secciones.Select(s =>
                 new Seccion(s.Nombre, s.Capacidad, new PrecioEntrada(s.Precio))
             ).ToList();
 
@@ -64,8 +64,12 @@ namespace events_service.Application.Commands.CrearEvento
             var evento = Evento.Crear(
                 request.Nombre,
                 request.Descripcion,
-                request.Fecha,
+                fechaEvento,
                 duracion,
+                request.OrganizadorId,
+                request.VenueId,
+                request.Categoria,
+                request.TarifaPublicacion,
                 secciones
             );
 
@@ -76,7 +80,7 @@ namespace events_service.Application.Commands.CrearEvento
             var domainEvents = evento.GetDomainEvents();
             foreach (var domainEvent in domainEvents)
             {
-                await _publisher.Publish(domainEvent, cancellationToken);
+                await _domainEventPublisher.PublishAsync(domainEvent, cancellationToken);
             }
             evento.ClearDomainEvents();
 

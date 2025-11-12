@@ -10,14 +10,18 @@ namespace events_service.Domain.ValueObjects
     public sealed class EstadoEvento : IEquatable<EstadoEvento>
     {
         private const string Borrador = "Borrador";
+        private const string PendientePago = "PendientePago";
         private const string Publicado = "Publicado";
+        private const string EnCurso = "EnCurso";
         private const string Finalizado = "Finalizado";
         private const string Cancelado = "Cancelado";
 
         private static readonly HashSet<string> EstadosValidos = new()
         {
             Borrador,
+            PendientePago,
             Publicado,
+            EnCurso,
             Finalizado,
             Cancelado
         };
@@ -36,6 +40,16 @@ namespace events_service.Domain.ValueObjects
         /// Indica si el estado es "Publicado".
         /// </summary>
         public bool EsPublicado => Valor == Publicado;
+
+        /// <summary>
+        /// Indica si el estado es "PendientePago".
+        /// </summary>
+        public bool EsPendientePago => Valor == PendientePago;
+
+        /// <summary>
+        /// Indica si el estado es "EnCurso".
+        /// </summary>
+        public bool EsEnCurso => Valor == EnCurso;
 
         /// <summary>
         /// Indica si el estado es "Finalizado".
@@ -76,14 +90,26 @@ namespace events_service.Domain.ValueObjects
         {
             if (otroEstado == null) return false;
 
-            // Borrador puede transicionar a Publicado o Cancelado
+            // Borrador puede transicionar a PendientePago o Cancelado
             if (EsBorrador)
+            {
+                return otroEstado.EsPendientePago || otroEstado.EsCancelado;
+            }
+
+            // Pendiente de pago puede transicionar a Publicado o Cancelado
+            if (EsPendientePago)
             {
                 return otroEstado.EsPublicado || otroEstado.EsCancelado;
             }
 
-            // Publicado puede transicionar a Finalizado o Cancelado
+            // Publicado puede transicionar a EnCurso o Cancelado
             if (EsPublicado)
+            {
+                return otroEstado.EsEnCurso || otroEstado.EsCancelado;
+            }
+
+            // En curso puede transicionar a Finalizado o Cancelado
+            if (EsEnCurso)
             {
                 return otroEstado.EsFinalizado || otroEstado.EsCancelado;
             }

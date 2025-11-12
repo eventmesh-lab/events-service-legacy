@@ -56,6 +56,34 @@ namespace events_service.Infrastructure.Persistence
             builder.Property(e => e.FechaPublicacion)
                 .HasColumnName("fecha_publicacion");
 
+            builder.Property(e => e.OrganizadorId)
+                .HasColumnName("organizador_id")
+                .HasColumnType("uuid")
+                .IsRequired();
+
+            builder.Property(e => e.VenueId)
+                .HasColumnName("venue_id")
+                .HasColumnType("uuid")
+                .IsRequired();
+
+            builder.Property(e => e.Categoria)
+                .HasColumnName("categoria")
+                .HasMaxLength(100)
+                .IsRequired();
+
+            builder.Property(e => e.TarifaPublicacion)
+                .HasColumnName("tarifa_publicacion")
+                .HasColumnType("numeric(10,2)")
+                .IsRequired();
+
+            builder.Property(e => e.TransaccionPagoId)
+                .HasColumnName("transaccion_pago_id")
+                .HasColumnType("uuid");
+
+            builder.Property(e => e.Version)
+                .HasColumnName("version")
+                .IsRequired();
+
             // Relación uno a muchos con Secciones
             builder.HasMany(e => e.Secciones)
                 .WithOne(s => s.Evento)

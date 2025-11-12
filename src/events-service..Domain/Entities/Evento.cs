@@ -15,169 +15,313 @@ namespace events_service.Domain.Entities
         private readonly List<IDomainEvent> _domainEvents = new();
         private readonly List<Seccion> _secciones = new();
 
-        /// <summary>
-        /// Identificador único del evento.
-        /// </summary>
         public Guid Id { get; private set; }
-
-        /// <summary>
-        /// Nombre del evento.
-        /// </summary>
         public string Nombre { get; private set; } = string.Empty;
-
-        /// <summary>
-        /// Descripción del evento.
-        /// </summary>
         public string Descripcion { get; private set; } = string.Empty;
-
-        /// <summary>
-        /// Fecha del evento.
-        /// </summary>
         public FechaEvento Fecha { get; private set; } = null!;
-
-        /// <summary>
-        /// Duración del evento.
-        /// </summary>
         public DuracionEvento Duracion { get; private set; } = null!;
-
-        /// <summary>
-        /// Estado actual del evento.
-        /// </summary>
         public EstadoEvento Estado { get; private set; } = null!;
+        public Guid OrganizadorId { get; private set; }
+        public Guid VenueId { get; private set; }
+        public string Categoria { get; private set; } = string.Empty;
+        public decimal TarifaPublicacion { get; private set; }
+        public Guid? TransaccionPagoId { get; private set; }
+        public DateTime FechaCreacion { get; private set; }
+        public DateTime? FechaPublicacion { get; private set; }
+        public int Version { get; private set; }
 
-        /// <summary>
-        /// Secciones del evento (colección de solo lectura).
-        /// </summary>
         public IReadOnlyCollection<Seccion> Secciones => _secciones.AsReadOnly();
 
-        /// <summary>
-        /// Constructor privado para forzar el uso del método factory Crear.
-        /// </summary>
         private Evento()
         {
         }
 
-        /// <summary>
-        /// Crea un nuevo evento en estado Borrador.
-        /// </summary>
-        /// <param name="nombre">Nombre del evento. No puede ser nulo o vacío.</param>
-        /// <param name="descripcion">Descripción del evento.</param>
-        /// <param name="fecha">Fecha del evento.</param>
-        /// <param name="duracion">Duración del evento.</param>
-        /// <param name="secciones">Lista de secciones del evento. Debe contener al menos una sección.</param>
-        /// <returns>Nueva instancia de Evento en estado Borrador.</returns>
-        /// <exception cref="ArgumentNullException">Cuando el nombre o las secciones son nulos.</exception>
-        /// <exception cref="ArgumentException">Cuando el nombre está vacío o la lista de secciones está vacía.</exception>
         public static Evento Crear(
             string nombre,
             string descripcion,
-            DateTime fecha,
+            FechaEvento fecha,
             DuracionEvento duracion,
+            Guid organizadorId,
+            Guid venueId,
+            string categoria,
+            decimal tarifaPublicacion,
             ICollection<Seccion> secciones)
         {
-            if (nombre == null)
+            if (nombre is null)
+            {
                 throw new ArgumentNullException(nameof(nombre), "El nombre no puede ser nulo.");
+            }
 
             if (string.IsNullOrWhiteSpace(nombre))
+            {
                 throw new ArgumentException("El nombre no puede estar vacío.", nameof(nombre));
+            }
 
-            if (secciones == null)
+            if (duracion is null)
+            {
+                throw new ArgumentNullException(nameof(duracion));
+            }
+
+            if (fecha is null)
+            {
+                throw new ArgumentNullException(nameof(fecha));
+            }
+
+            if (organizadorId == Guid.Empty)
+            {
+                throw new ArgumentException("El organizador es requerido.", nameof(organizadorId));
+            }
+
+            if (venueId == Guid.Empty)
+            {
+                throw new ArgumentException("El venue es requerido.", nameof(venueId));
+            }
+
+            if (string.IsNullOrWhiteSpace(categoria))
+            {
+                throw new ArgumentException("La categoría es requerida.", nameof(categoria));
+            }
+
+            if (tarifaPublicacion < 0)
+            {
+                throw new ArgumentException("La tarifa de publicación no puede ser negativa.", nameof(tarifaPublicacion));
+            }
+
+            if (secciones is null)
+            {
                 throw new ArgumentNullException(nameof(secciones), "Las secciones no pueden ser nulas.");
+            }
 
             if (secciones.Count == 0)
+            {
                 throw new ArgumentException("El evento debe tener al menos una sección.", nameof(secciones));
+            }
+
+            var ahora = DateTime.Now;
 
             var evento = new Evento
             {
                 Id = Guid.NewGuid(),
                 Nombre = nombre,
                 Descripcion = descripcion ?? string.Empty,
-                Fecha = new FechaEvento(fecha),
-                Duracion = duracion ?? throw new ArgumentNullException(nameof(duracion)),
-                Estado = new EstadoEvento("Borrador")
+                Fecha = fecha,
+                Duracion = duracion,
+                Estado = new EstadoEvento("Borrador"),
+                OrganizadorId = organizadorId,
+                VenueId = venueId,
+                Categoria = categoria,
+                TarifaPublicacion = Math.Round(tarifaPublicacion, 2, MidpointRounding.AwayFromZero),
+                FechaCreacion = ahora,
+                Version = 1
             };
 
-            evento._secciones.AddRange(secciones);
+            evento.ReemplazarSecciones(secciones);
 
-            // Generar evento de dominio
-            var eventoCreado = new EventoCreado(evento.Id, evento.Nombre);
-            evento._domainEvents.Add(eventoCreado);
+            evento.RegistrarEvento(new EventoCreado(evento.Id, evento.Nombre, evento.OrganizadorId, evento.Fecha.Valor, evento.FechaCreacion));
 
             return evento;
         }
 
-        /// <summary>
-        /// Publica el evento, cambiando su estado de Borrador a Publicado.
-        /// </summary>
-        /// <exception cref="InvalidOperationException">Cuando el evento no está en estado Borrador.</exception>
-        public void Publicar()
+        public void Editar(
+            string nombre,
+            string descripcion,
+            FechaEvento fecha,
+            DuracionEvento duracion,
+            string categoria,
+            IEnumerable<Seccion> secciones)
         {
-            if (!Estado.EsBorrador)
-                throw new InvalidOperationException($"No se puede publicar un evento que está en estado '{Estado.Valor}'. Solo se pueden publicar eventos en estado Borrador.");
+            AsegurarEstado(Estado.EsBorrador, "Solo se pueden editar eventos en estado Borrador.");
 
-            Estado = new EstadoEvento("Publicado");
+            if (nombre is null)
+            {
+                throw new ArgumentNullException(nameof(nombre));
+            }
 
-            // Generar evento de dominio
-            var eventoPublicado = new EventoPublicado(Id);
-            _domainEvents.Add(eventoPublicado);
+            if (string.IsNullOrWhiteSpace(nombre))
+            {
+                throw new ArgumentException("El nombre no puede estar vacío.", nameof(nombre));
+            }
+
+            if (fecha is null)
+            {
+                throw new ArgumentNullException(nameof(fecha));
+            }
+
+            if (duracion is null)
+            {
+                throw new ArgumentNullException(nameof(duracion));
+            }
+
+            if (string.IsNullOrWhiteSpace(categoria))
+            {
+                throw new ArgumentException("La categoría es requerida.", nameof(categoria));
+            }
+
+            if (secciones is null)
+            {
+                throw new ArgumentNullException(nameof(secciones));
+            }
+
+            var listaSecciones = secciones.ToList();
+
+            if (listaSecciones.Count == 0)
+            {
+                throw new ArgumentException("El evento debe tener al menos una sección.", nameof(secciones));
+            }
+
+            Nombre = nombre;
+            Descripcion = descripcion ?? string.Empty;
+            Fecha = fecha;
+            Duracion = duracion;
+            Categoria = categoria;
+
+            ReemplazarSecciones(listaSecciones);
+            IncrementarVersion();
+
+            RegistrarEvento(new EventoEditado(Id, DateTime.Now));
         }
 
-        /// <summary>
-        /// Agrega una nueva sección al evento.
-        /// </summary>
-        /// <param name="seccion">Sección a agregar. No puede ser nula.</param>
-        /// <exception cref="ArgumentNullException">Cuando la sección es nula.</exception>
-        /// <exception cref="InvalidOperationException">Cuando la sección ya existe (duplicada).</exception>
         public void AgregarSeccion(Seccion seccion)
         {
-            if (seccion == null)
-                throw new ArgumentNullException(nameof(seccion), "La sección no puede ser nula.");
+            AsegurarEstado(Estado.EsBorrador, "Solo se pueden modificar secciones en estado Borrador.");
 
-            // Verificar si la sección ya existe (por ID o por nombre)
-            if (_secciones.Any(s => s.Id == seccion.Id || s.Nombre == seccion.Nombre))
+            if (seccion == null)
+            {
+                throw new ArgumentNullException(nameof(seccion), "La sección no puede ser nula.");
+            }
+
+            if (_secciones.Any(s => s.Id == seccion.Id || s.Nombre.Equals(seccion.Nombre, StringComparison.OrdinalIgnoreCase)))
+            {
                 throw new InvalidOperationException("No se puede agregar una sección duplicada.");
+            }
 
             _secciones.Add(seccion);
+            IncrementarVersion();
         }
 
-        /// <summary>
-        /// Finaliza el evento, cambiando su estado de Publicado a Finalizado.
-        /// </summary>
-        /// <exception cref="InvalidOperationException">Cuando el evento no está en estado Publicado.</exception>
-        public void Finalizar()
+        public void PagarPublicacion(Guid transaccionPagoId, decimal monto)
         {
-            if (!Estado.EsPublicado)
-                throw new InvalidOperationException($"No se puede finalizar un evento que está en estado '{Estado.Valor}'. Solo se pueden finalizar eventos en estado Publicado.");
+            AsegurarEstado(Estado.EsBorrador, "Solo se puede iniciar el pago cuando el evento está en Borrador.");
+
+            if (transaccionPagoId == Guid.Empty)
+            {
+                throw new ArgumentException("La transacción es requerida.", nameof(transaccionPagoId));
+            }
+
+            if (monto <= 0)
+            {
+                throw new ArgumentException("El monto debe ser mayor a cero.", nameof(monto));
+            }
+
+            if (Math.Round(monto, 2, MidpointRounding.AwayFromZero) != TarifaPublicacion)
+            {
+                throw new InvalidOperationException("El monto del pago no coincide con la tarifa de publicación configurada.");
+            }
+
+            TransaccionPagoId = transaccionPagoId;
+            Estado = new EstadoEvento("PendientePago");
+            IncrementarVersion();
+
+            RegistrarEvento(new PagoPublicacionIniciado(Id, transaccionPagoId, monto));
+        }
+
+        public void Publicar(Guid pagoConfirmadoId, DateTime fechaActual)
+        {
+            AsegurarEstado(Estado.EsPendientePago, "Solo se pueden publicar eventos con pago pendiente.");
+
+            if (pagoConfirmadoId == Guid.Empty)
+            {
+                throw new ArgumentException("El identificador de pago es requerido.", nameof(pagoConfirmadoId));
+            }
+
+            if (TransaccionPagoId != pagoConfirmadoId)
+            {
+                throw new InvalidOperationException("El pago confirmado no corresponde con la transacción registrada.");
+            }
+
+            Estado = new EstadoEvento("Publicado");
+            FechaPublicacion = fechaActual;
+            TransaccionPagoId = null;
+            IncrementarVersion();
+
+            RegistrarEvento(new EventoPublicado(Id, Nombre, OrganizadorId, FechaPublicacion.Value));
+        }
+
+        public void Iniciar(DateTime fechaActual)
+        {
+            AsegurarEstado(Estado.EsPublicado, "Solo se pueden iniciar eventos publicados.");
+
+            if (!Fecha.HaComenzado(fechaActual))
+            {
+                throw new InvalidOperationException("No se puede iniciar el evento antes de la fecha programada.");
+            }
+
+            Estado = new EstadoEvento("EnCurso");
+            IncrementarVersion();
+
+            RegistrarEvento(new EventoIniciado(Id, fechaActual));
+        }
+
+        public void Finalizar(DateTime fechaActual)
+        {
+            AsegurarEstado(Estado.EsEnCurso, "Solo se pueden finalizar eventos en curso.");
 
             Estado = new EstadoEvento("Finalizado");
+            IncrementarVersion();
+
+            RegistrarEvento(new EventoFinalizado(Id, fechaActual));
         }
 
-        /// <summary>
-        /// Cancela el evento, cambiando su estado a Cancelado.
-        /// </summary>
-        public void Cancelar()
+        public void Cancelar(string motivo)
         {
             if (Estado.EsFinalizado)
-                throw new InvalidOperationException($"No se puede cancelar un evento que está en estado '{Estado.Valor}'.");
+            {
+                throw new InvalidOperationException("No se puede cancelar un evento finalizado.");
+            }
+
+            if (Estado.EsEnCurso)
+            {
+                throw new InvalidOperationException("No se puede cancelar un evento en curso.");
+            }
+
+            if (string.IsNullOrWhiteSpace(motivo))
+            {
+                motivo = "Sin motivo declarado";
+            }
 
             Estado = new EstadoEvento("Cancelado");
+            TransaccionPagoId = null;
+            IncrementarVersion();
+
+            RegistrarEvento(new EventoCancelado(Id, motivo));
         }
 
-        /// <summary>
-        /// Obtiene todos los eventos de dominio pendientes.
-        /// </summary>
-        /// <returns>Colección de eventos de dominio.</returns>
-        public IReadOnlyCollection<IDomainEvent> GetDomainEvents()
+        public IReadOnlyCollection<IDomainEvent> GetDomainEvents() => _domainEvents.AsReadOnly();
+
+        public void ClearDomainEvents() => _domainEvents.Clear();
+
+        private void RegistrarEvento(IDomainEvent domainEvent)
         {
-            return _domainEvents.AsReadOnly();
+            _domainEvents.Add(domainEvent);
         }
 
-        /// <summary>
-        /// Limpia todos los eventos de dominio pendientes.
-        /// </summary>
-        public void ClearDomainEvents()
+        private void AsegurarEstado(bool condicion, string mensaje)
         {
-            _domainEvents.Clear();
+            if (!condicion)
+            {
+                throw new InvalidOperationException(mensaje);
+            }
+        }
+
+        private void ReemplazarSecciones(IEnumerable<Seccion> secciones)
+        {
+            _secciones.Clear();
+            _secciones.AddRange(secciones);
+        }
+
+        private void IncrementarVersion()
+        {
+            Version++;
         }
     }
 }

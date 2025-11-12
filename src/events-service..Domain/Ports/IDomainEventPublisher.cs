@@ -2,10 +2,11 @@ using System.Threading;
 using System.Threading.Tasks;
 using events_service.Domain.Events;
 
-namespace events_service.Infrastructure.Messaging
+namespace events_service.Domain.Ports
 {
     /// <summary>
     /// Interfaz para publicar eventos de dominio en el bus de mensajería.
+    /// Define el contrato para la publicación de eventos de dominio.
     /// </summary>
     public interface IDomainEventPublisher
     {

@@ -40,6 +40,26 @@ namespace events_service.Application.Commands.CrearEvento
         public List<SeccionDto> Secciones { get; init; } = new();
 
         /// <summary>
+        /// Identificador del organizador propietario del evento.
+        /// </summary>
+        public Guid OrganizadorId { get; init; }
+
+        /// <summary>
+        /// Identificador del venue donde se realizará el evento.
+        /// </summary>
+        public Guid VenueId { get; init; }
+
+        /// <summary>
+        /// Categoría del evento.
+        /// </summary>
+        public string Categoria { get; init; } = string.Empty;
+
+        /// <summary>
+        /// Tarifa de publicación configurada para el evento.
+        /// </summary>
+        public decimal TarifaPublicacion { get; init; }
+
+        /// <summary>
         /// DTO que representa una sección del evento.
         /// </summary>
         public record SeccionDto
@@ -58,6 +78,11 @@ namespace events_service.Application.Commands.CrearEvento
             /// Precio de entrada para esta sección.
             /// </summary>
             public decimal Precio { get; init; }
+
+            /// <summary>
+            /// Tipo de asiento de la sección (opcional).
+            /// </summary>
+            public string? TipoAsiento { get; init; }
         }
     }
 

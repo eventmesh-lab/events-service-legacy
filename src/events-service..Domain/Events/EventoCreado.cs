@@ -19,20 +19,37 @@ namespace events_service.Domain.Events
         public string Nombre { get; }
 
         /// <summary>
-        /// Fecha y hora en que ocurrió el evento.
+        /// Identificador del organizador propietario del evento.
         /// </summary>
-        public DateTime OccurredOn { get; }
+        public Guid OrganizadorId { get; }
+
+        /// <summary>
+        /// Fecha programada de inicio del evento.
+        /// </summary>
+        public DateTime FechaInicio { get; }
+
+        /// <summary>
+        /// Fecha y hora en que se registró la creación del evento.
+        /// </summary>
+        public DateTime FechaCreacion { get; }
+
+        public DateTime OccurredOn => FechaCreacion;
 
         /// <summary>
         /// Crea una nueva instancia de EventoCreado.
         /// </summary>
         /// <param name="eventoId">Identificador único del evento.</param>
         /// <param name="nombre">Nombre del evento.</param>
-        public EventoCreado(Guid eventoId, string nombre)
+        /// <param name="organizadorId">Identificador del organizador.</param>
+        /// <param name="fechaInicio">Fecha de inicio del evento.</param>
+        /// <param name="fechaCreacion">Fecha de creación del evento.</param>
+        public EventoCreado(Guid eventoId, string nombre, Guid organizadorId, DateTime fechaInicio, DateTime fechaCreacion)
         {
             EventoId = eventoId;
             Nombre = nombre;
-            OccurredOn = DateTime.UtcNow;
+            OrganizadorId = organizadorId;
+            FechaInicio = fechaInicio;
+            FechaCreacion = fechaCreacion;
         }
     }
 }

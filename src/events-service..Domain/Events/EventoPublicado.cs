@@ -14,18 +14,35 @@ namespace events_service.Domain.Events
         public Guid EventoId { get; }
 
         /// <summary>
-        /// Fecha y hora en que ocurrió el evento.
+        /// Nombre del evento.
         /// </summary>
-        public DateTime OccurredOn { get; }
+        public string Nombre { get; }
+
+        /// <summary>
+        /// Identificador del organizador propietario.
+        /// </summary>
+        public Guid OrganizadorId { get; }
+
+        /// <summary>
+        /// Fecha de publicación del evento.
+        /// </summary>
+        public DateTime FechaPublicacion { get; }
+
+        public DateTime OccurredOn => FechaPublicacion;
 
         /// <summary>
         /// Crea una nueva instancia de EventoPublicado.
         /// </summary>
         /// <param name="eventoId">Identificador único del evento.</param>
-        public EventoPublicado(Guid eventoId)
+        /// <param name="nombre">Nombre del evento.</param>
+        /// <param name="organizadorId">Identificador del organizador.</param>
+        /// <param name="fechaPublicacion">Fecha de publicación.</param>
+        public EventoPublicado(Guid eventoId, string nombre, Guid organizadorId, DateTime fechaPublicacion)
         {
             EventoId = eventoId;
-            OccurredOn = DateTime.UtcNow;
+            Nombre = nombre;
+            OrganizadorId = organizadorId;
+            FechaPublicacion = fechaPublicacion;
         }
     }
 }

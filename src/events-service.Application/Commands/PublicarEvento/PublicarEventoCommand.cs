@@ -13,6 +13,11 @@ namespace events_service.Application.Commands.PublicarEvento
         /// Identificador único del evento a publicar.
         /// </summary>
         public Guid EventoId { get; init; }
+
+        /// <summary>
+        /// Identificador del pago confirmado asociado al evento.
+        /// </summary>
+        public Guid PagoConfirmadoId { get; init; }
     }
 }
 

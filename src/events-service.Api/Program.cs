@@ -5,6 +5,10 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using events_service.Application.Commands.CrearEvento;
+using events_service.Application.Commands.EditarEvento;
+using events_service.Application.Commands.FinalizarEvento;
+using events_service.Application.Commands.IniciarEvento;
+using events_service.Application.Commands.PagarPublicacion;
 using events_service.Application.Commands.PublicarEvento;
 using events_service.Domain.Ports;
 using events_service.Infrastructure.Messaging;
@@ -87,14 +91,66 @@ public static class EventosEndpointsExtensions
         .Produces(StatusCodes.Status400BadRequest);
 
         // POST /api/eventos/{id}/publicar
-        eventos.MapPost("/{id:guid}/publicar", async (Guid id, IMediator mediator) =>
+        eventos.MapPost("/{id:guid}/publicar", async (Guid id, PublicarEventoCommand command, IMediator mediator) =>
         {
-            var command = new PublicarEventoCommand { EventoId = id };
-            await mediator.Send(command);
+            var enrichedCommand = command with { EventoId = id };
+            await mediator.Send(enrichedCommand);
             return Results.Ok();
         })
         .WithName("PublicarEvento")
         .WithSummary("Publica un evento existente")
+        .Produces(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status404NotFound);
+
+        // PUT /api/eventos/{id}
+        eventos.MapPut("/{id:guid}", async (Guid id, EditarEventoCommand command, IMediator mediator) =>
+        {
+            var enrichedCommand = command with { EventoId = id };
+            await mediator.Send(enrichedCommand);
+            return Results.NoContent();
+        })
+        .WithName("EditarEvento")
+        .WithSummary("Edita un evento en estado borrador")
+        .Produces(StatusCodes.Status204NoContent)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status404NotFound);
+
+        // POST /api/eventos/{id}/pagar-publicacion
+        eventos.MapPost("/{id:guid}/pagar-publicacion", async (Guid id, PagarPublicacionCommand command, IMediator mediator) =>
+        {
+            var enrichedCommand = command with { EventoId = id };
+            await mediator.Send(enrichedCommand);
+            return Results.Accepted($"/api/eventos/{id}");
+        })
+        .WithName("PagarPublicacionEvento")
+        .WithSummary("Inicia el pago de publicación del evento")
+        .Produces(StatusCodes.Status202Accepted)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status404NotFound);
+
+        // POST /api/eventos/{id}/iniciar
+        eventos.MapPost("/{id:guid}/iniciar", async (Guid id, IMediator mediator) =>
+        {
+            var command = new IniciarEventoCommand { EventoId = id };
+            await mediator.Send(command);
+            return Results.Ok();
+        })
+        .WithName("IniciarEvento")
+        .WithSummary("Marca un evento publicado como en curso")
+        .Produces(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status404NotFound);
+
+        // POST /api/eventos/{id}/finalizar
+        eventos.MapPost("/{id:guid}/finalizar", async (Guid id, IMediator mediator) =>
+        {
+            var command = new FinalizarEventoCommand { EventoId = id };
+            await mediator.Send(command);
+            return Results.Ok();
+        })
+        .WithName("FinalizarEvento")
+        .WithSummary("Finaliza un evento en curso")
         .Produces(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status404NotFound);

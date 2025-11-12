@@ -39,7 +39,7 @@ namespace events_service.Infrastructure.Repositories
                 throw new ArgumentNullException(nameof(evento));
 
             var entity = MapToEntity(evento);
-            entity.FechaCreacion = DateTime.UtcNow;
+            entity.FechaCreacion = evento.FechaCreacion;
 
             await _context.Eventos.AddAsync(entity, cancellationToken);
             await _context.SaveChangesAsync(cancellationToken);
@@ -83,16 +83,18 @@ namespace events_service.Infrastructure.Repositories
             // Actualizar propiedades
             entity.Nombre = evento.Nombre;
             entity.Descripcion = evento.Descripcion;
+            entity.OrganizadorId = evento.OrganizadorId;
+            entity.VenueId = evento.VenueId;
+            entity.Categoria = evento.Categoria;
+            entity.TarifaPublicacion = evento.TarifaPublicacion;
             entity.FechaInicio = evento.Fecha.Valor;
             entity.DuracionHoras = evento.Duracion.Horas;
             entity.DuracionMinutos = evento.Duracion.Minutos;
             entity.Estado = evento.Estado.Valor;
-
-            // Actualizar fecha de publicación si el estado cambió a Publicado
-            if (evento.Estado.EsPublicado && entity.FechaPublicacion == null)
-            {
-                entity.FechaPublicacion = DateTime.UtcNow;
-            }
+            entity.TransaccionPagoId = evento.TransaccionPagoId;
+            entity.Version = evento.Version;
+            entity.FechaCreacion = evento.FechaCreacion;
+            entity.FechaPublicacion = evento.FechaPublicacion;
 
             // Actualizar secciones (eliminar las que ya no existen y agregar nuevas)
             var seccionesExistentes = entity.Secciones.ToList();
@@ -149,21 +151,25 @@ namespace events_service.Infrastructure.Repositories
                 new Seccion(s.Id, s.Nombre, s.Capacidad, new PrecioEntrada(s.PrecioMonto))
             ).ToList();
 
-            // Crear evento usando el método factory
-            // Nota: El método Crear genera un nuevo ID, así que necesitamos usar reflexión
-            // para establecer el ID correcto y el estado desde la base de datos
             var evento = Evento.Crear(
                 entity.Nombre,
                 entity.Descripcion,
-                entity.FechaInicio,
+                fecha,
                 duracion,
-                secciones
-            );
+                entity.OrganizadorId,
+                entity.VenueId,
+                entity.Categoria,
+                entity.TarifaPublicacion,
+                secciones);
 
-            // Establecer el ID y estado usando reflexión (necesario porque son propiedades privadas)
-            // Esto es necesario porque el método Crear siempre genera un nuevo ID y establece estado Borrador
+            evento.ClearDomainEvents();
+
             SetPrivateProperty(evento, nameof(Evento.Id), entity.Id);
             SetPrivateProperty(evento, nameof(Evento.Estado), estado);
+            SetPrivateProperty(evento, nameof(Evento.TransaccionPagoId), entity.TransaccionPagoId);
+            SetPrivateProperty(evento, nameof(Evento.Version), entity.Version);
+            SetPrivateProperty(evento, nameof(Evento.FechaCreacion), entity.FechaCreacion);
+            SetPrivateProperty(evento, nameof(Evento.FechaPublicacion), entity.FechaPublicacion);
 
             return evento;
         }
@@ -178,10 +184,18 @@ namespace events_service.Infrastructure.Repositories
                 Id = evento.Id,
                 Nombre = evento.Nombre,
                 Descripcion = evento.Descripcion,
+                OrganizadorId = evento.OrganizadorId,
+                VenueId = evento.VenueId,
+                Categoria = evento.Categoria,
+                TarifaPublicacion = evento.TarifaPublicacion,
                 FechaInicio = evento.Fecha.Valor,
                 DuracionHoras = evento.Duracion.Horas,
                 DuracionMinutos = evento.Duracion.Minutos,
                 Estado = evento.Estado.Valor,
+                TransaccionPagoId = evento.TransaccionPagoId,
+                Version = evento.Version,
+                FechaCreacion = evento.FechaCreacion,
+                FechaPublicacion = evento.FechaPublicacion,
                 Secciones = evento.Secciones.Select(s => new SeccionEntity
                 {
                     Id = s.Id,
@@ -196,9 +210,9 @@ namespace events_service.Infrastructure.Repositories
         /// <summary>
         /// Establece una propiedad privada usando reflexión.
         /// </summary>
-        private void SetPrivateProperty(object obj, string propertyName, object value)
+        private void SetPrivateProperty(object obj, string propertyName, object? value)
         {
-            var property = obj.GetType().GetProperty(propertyName, 
+            var property = obj.GetType().GetProperty(propertyName,
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
             property?.SetValue(obj, value);
         }

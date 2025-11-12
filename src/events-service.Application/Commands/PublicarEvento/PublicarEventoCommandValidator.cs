@@ -16,6 +16,10 @@ namespace events_service.Application.Commands.PublicarEvento
             RuleFor(x => x.EventoId)
                 .NotEmpty()
                 .WithMessage("El ID del evento es requerido.");
+
+            RuleFor(x => x.PagoConfirmadoId)
+                .NotEmpty()
+                .WithMessage("El ID del pago confirmado es requerido.");
         }
     }
 }

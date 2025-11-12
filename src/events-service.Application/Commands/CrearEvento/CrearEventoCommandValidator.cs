@@ -1,3 +1,4 @@
+using System;
 using FluentValidation;
 
 namespace events_service.Application.Commands.CrearEvento
@@ -20,7 +21,7 @@ namespace events_service.Application.Commands.CrearEvento
             RuleFor(x => x.Fecha)
                 .NotEmpty()
                 .WithMessage("La fecha del evento es requerida.")
-                .Must(fecha => fecha > DateTime.UtcNow)
+                .Must(fecha => fecha > DateTime.Now)
                 .WithMessage("La fecha del evento debe ser en el futuro.");
 
             RuleFor(x => x.HorasDuracion)
@@ -37,6 +38,22 @@ namespace events_service.Application.Commands.CrearEvento
 
             RuleForEach(x => x.Secciones)
                 .SetValidator(new SeccionDtoValidator());
+
+            RuleFor(x => x.OrganizadorId)
+                .NotEmpty()
+                .WithMessage("El organizador es requerido.");
+
+            RuleFor(x => x.VenueId)
+                .NotEmpty()
+                .WithMessage("El venue es requerido.");
+
+            RuleFor(x => x.Categoria)
+                .NotEmpty()
+                .WithMessage("La categoría es requerida.");
+
+            RuleFor(x => x.TarifaPublicacion)
+                .GreaterThanOrEqualTo(0)
+                .WithMessage("La tarifa de publicación no puede ser negativa.");
         }
     }
 

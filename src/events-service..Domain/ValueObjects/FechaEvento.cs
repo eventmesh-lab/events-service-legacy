@@ -9,7 +9,7 @@ namespace events_service.Domain.ValueObjects
     public sealed class FechaEvento : IEquatable<FechaEvento>
     {
         /// <summary>
-        /// Valor de la fecha del evento.
+        /// Fecha programada del evento.
         /// </summary>
         public DateTime Valor { get; }
 
@@ -25,7 +25,7 @@ namespace events_service.Domain.ValueObjects
                 throw new ArgumentNullException(nameof(fecha), "La fecha no puede ser nula.");
 
             var fechaDate = fecha.Value.Date;
-            var hoy = DateTime.UtcNow.Date;
+            var hoy = DateTime.Now.Date;
 
             if (fechaDate < hoy)
                 throw new ArgumentException("La fecha del evento debe ser hoy o en el futuro.", nameof(fecha));
@@ -56,6 +56,14 @@ namespace events_service.Domain.ValueObjects
         public override int GetHashCode()
         {
             return Valor.Date.GetHashCode();
+        }
+
+        /// <summary>
+        /// Indica si la fecha del evento ya ocurrió con base en una fecha de referencia.
+        /// </summary>
+        public bool HaComenzado(DateTime fechaReferencia)
+        {
+            return fechaReferencia.Date >= Valor.Date;
         }
 
         /// <summary>
