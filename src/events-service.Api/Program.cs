@@ -14,6 +14,7 @@ using events_service.Domain.Ports;
 using events_service.Infrastructure.Messaging;
 using events_service.Infrastructure.Persistence;
 using events_service.Infrastructure.Repositories;
+using events_service.Infrastructure.Fallback;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -45,7 +46,10 @@ builder.Services.AddValidatorsFromAssembly(typeof(CrearEventoCommandValidator).A
 builder.Services.AddValidatorsFromAssembly(typeof(PublicarEventoCommandValidator).Assembly);
 
 // Registrar repositorios
-builder.Services.AddScoped<IEventoRepository, EventoRepository>();
+builder.Services.Configure<EventoFallbackOptions>(builder.Configuration.GetSection("FallbackStorage"));
+builder.Services.AddSingleton<IEventoFallbackStore, JsonEventoFallbackStore>();
+builder.Services.AddScoped<EventoRepository>();
+builder.Services.AddScoped<IEventoRepository, HybridEventoRepository>();
 
 // Registrar mensajería RabbitMQ
 builder.Services.AddRabbitMqMessaging(builder.Configuration);
