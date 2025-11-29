@@ -18,7 +18,6 @@ using events_service.Domain.Ports;
 using events_service.Infrastructure.Messaging;
 using events_service.Infrastructure.Persistence;
 using events_service.Infrastructure.Repositories;
-using events_service.Infrastructure.Fallback;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -88,10 +87,7 @@ builder.Services.AddValidatorsFromAssembly(typeof(CrearEventoCommandValidator).A
 builder.Services.AddValidatorsFromAssembly(typeof(PublicarEventoCommandValidator).Assembly);
 
 // Registrar repositorios
-builder.Services.Configure<EventoFallbackOptions>(builder.Configuration.GetSection("FallbackStorage"));
-builder.Services.AddSingleton<IEventoFallbackStore, JsonEventoFallbackStore>();
-builder.Services.AddScoped<EventoRepository>();
-builder.Services.AddScoped<IEventoRepository, HybridEventoRepository>();
+builder.Services.AddScoped<IEventoRepository, EventoRepository>();
 
 // Registrar mensajería RabbitMQ
 builder.Services.AddRabbitMqMessaging(builder.Configuration);
@@ -676,6 +672,113 @@ public static class EventosEndpointsExtensions
         .Produces(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status404NotFound);
+
+        // GET /api/eventos/publicados
+        eventos.MapGet("/publicados", async (IEventoRepository repository) =>
+        {
+            var eventos = await repository.GetPublicadosAsync();
+            return Results.Ok(eventos.Select(EventoResponseDto.FromDomain).ToList());
+        })
+        .WithName("ObtenerEventosPublicados")
+        .WithSummary("Obtiene todos los eventos publicados")
+        .WithDescription("Recupera la lista de todos los eventos que se encuentran en estado 'Publicado'. " +
+                         "Incluye todos los datos de cada evento, sus secciones, estado actual y fechas relevantes.")
+        .WithOpenApi(operation => new(operation)
+        {
+            Summary = "Obtiene todos los eventos publicados",
+            Description = "Recupera la lista de todos los eventos que se encuentran en estado 'Publicado'. " +
+                         "Incluye todos los datos de cada evento, sus secciones, estado actual y fechas relevantes.",
+            Responses = new OpenApiResponses
+            {
+                ["200"] = new OpenApiResponse
+                {
+                    Description = "Lista de eventos publicados obtenida exitosamente"
+                }
+            }
+        })
+        .Produces<List<EventoResponseDto>>(StatusCodes.Status200OK);
+
+        // GET /api/eventos/organizador/{organizadorId}
+        eventos.MapGet("/organizador/{organizadorId:guid}", async (Guid organizadorId, IEventoRepository repository) =>
+        {
+            var eventos = await repository.GetByOrganizadorIdAsync(organizadorId);
+            return Results.Ok(eventos.Select(EventoResponseDto.FromDomain).ToList());
+        })
+        .WithName("ObtenerEventosPorOrganizador")
+        .WithSummary("Obtiene todos los eventos de un organizador")
+        .WithDescription("Recupera la lista de todos los eventos asociados a un organizador específico. " +
+                         "Incluye eventos en cualquier estado (Borrador, Publicado, Finalizado, etc.).")
+        .WithOpenApi(operation => new(operation)
+        {
+            Summary = "Obtiene todos los eventos de un organizador",
+            Description = "Recupera la lista de todos los eventos asociados a un organizador específico. " +
+                         "Incluye eventos en cualquier estado (Borrador, Publicado, Finalizado, etc.).",
+            Parameters = new List<OpenApiParameter>
+            {
+                new()
+                {
+                    Name = "organizadorId",
+                    In = ParameterLocation.Path,
+                    Required = true,
+                    Description = "Identificador único del organizador (GUID)",
+                    Schema = new OpenApiSchema
+                    {
+                        Type = "string",
+                        Format = "uuid"
+                    },
+                    Example = new Microsoft.OpenApi.Any.OpenApiString("550e8400-e29b-41d4-a716-446655440000")
+                }
+            },
+            Responses = new OpenApiResponses
+            {
+                ["200"] = new OpenApiResponse
+                {
+                    Description = "Lista de eventos del organizador obtenida exitosamente"
+                }
+            }
+        })
+        .Produces<List<EventoResponseDto>>(StatusCodes.Status200OK);
+
+        // GET /api/eventos/venue/{venueId}
+        eventos.MapGet("/venue/{venueId:guid}", async (Guid venueId, IEventoRepository repository) =>
+        {
+            var eventos = await repository.GetByVenueIdAsync(venueId);
+            return Results.Ok(eventos.Select(EventoResponseDto.FromDomain).ToList());
+        })
+        .WithName("ObtenerEventosPorVenue")
+        .WithSummary("Obtiene todos los eventos de un venue")
+        .WithDescription("Recupera la lista de todos los eventos que se realizarán en un venue específico. " +
+                         "Incluye eventos en cualquier estado (Borrador, Publicado, Finalizado, etc.).")
+        .WithOpenApi(operation => new(operation)
+        {
+            Summary = "Obtiene todos los eventos de un venue",
+            Description = "Recupera la lista de todos los eventos que se realizarán en un venue específico. " +
+                         "Incluye eventos en cualquier estado (Borrador, Publicado, Finalizado, etc.).",
+            Parameters = new List<OpenApiParameter>
+            {
+                new()
+                {
+                    Name = "venueId",
+                    In = ParameterLocation.Path,
+                    Required = true,
+                    Description = "Identificador único del venue (GUID)",
+                    Schema = new OpenApiSchema
+                    {
+                        Type = "string",
+                        Format = "uuid"
+                    },
+                    Example = new Microsoft.OpenApi.Any.OpenApiString("660e8400-e29b-41d4-a716-446655440001")
+                }
+            },
+            Responses = new OpenApiResponses
+            {
+                ["200"] = new OpenApiResponse
+                {
+                    Description = "Lista de eventos del venue obtenida exitosamente"
+                }
+            }
+        })
+        .Produces<List<EventoResponseDto>>(StatusCodes.Status200OK);
 
         // GET /api/eventos/{id}
         eventos.MapGet("/{id:guid}", async (Guid id, IEventoRepository repository) =>

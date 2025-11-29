@@ -21,7 +21,7 @@ namespace events_service.Domain.Events
             EventoId = eventoId;
             TransaccionPagoId = transaccionPagoId;
             Monto = monto;
-            OccurredOn = DateTime.Now;
+            OccurredOn = DateTime.UtcNow;
         }
     }
 }

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using events_service.Domain.Entities;
@@ -34,6 +35,29 @@ namespace events_service.Domain.Ports
         /// <param name="cancellationToken">Token de cancelación.</param>
         /// <returns>Tarea que representa la operación asíncrona.</returns>
         Task UpdateAsync(Evento evento, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Obtiene todos los eventos en estado "Publicado".
+        /// </summary>
+        /// <param name="cancellationToken">Token de cancelación.</param>
+        /// <returns>Lista de eventos publicados.</returns>
+        Task<IReadOnlyList<Evento>> GetPublicadosAsync(CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Obtiene todos los eventos de un organizador específico.
+        /// </summary>
+        /// <param name="organizadorId">Identificador único del organizador.</param>
+        /// <param name="cancellationToken">Token de cancelación.</param>
+        /// <returns>Lista de eventos del organizador.</returns>
+        Task<IReadOnlyList<Evento>> GetByOrganizadorIdAsync(Guid organizadorId, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Obtiene todos los eventos de un venue específico.
+        /// </summary>
+        /// <param name="venueId">Identificador único del venue.</param>
+        /// <param name="cancellationToken">Token de cancelación.</param>
+        /// <returns>Lista de eventos del venue.</returns>
+        Task<IReadOnlyList<Evento>> GetByVenueIdAsync(Guid venueId, CancellationToken cancellationToken = default);
     }
 }
 

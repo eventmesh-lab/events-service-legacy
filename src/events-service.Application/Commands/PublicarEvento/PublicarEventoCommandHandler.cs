@@ -57,7 +57,7 @@ namespace events_service.Application.Commands.PublicarEvento
             }
 
             // Publicar el evento (el dominio valida el estado)
-            evento.Publicar(request.PagoConfirmadoId, DateTime.Now);
+            evento.Publicar(request.PagoConfirmadoId, DateTime.UtcNow);
 
             // Persistir los cambios
             await _repository.UpdateAsync(evento, cancellationToken);
