@@ -1,0 +1,84 @@
+apiVersion: 2021-10-01
+location: eastus
+name: events-aci-group
+type: Microsoft.ContainerInstance/containerGroups
+properties:
+  osType: Linux
+  restartPolicy: Always
+  containers:
+    - name: api
+      properties:
+        image: proyectods252acr1525.azurecr.io/events-api:latest
+        ports:
+          - port: 8080
+        environmentVariables:
+          - name: ASPNETCORE_ENVIRONMENT
+            value: Development
+          - name: ConnectionStrings__EventsDb
+            value: Host=localhost;Port=5432;Database=events;Username=events;Password=events
+          - name: MessageBroker__Host
+            value: localhost
+          - name: MessageBroker__Exchange
+            value: eventos.domain.events
+          - name: MessageBroker__Username
+            value: guest
+          - name: MessageBroker__Password
+            value: guest
+          - name: FallbackStorage__EventsFilePath
+            value: /app/data/events-fallback.json
+        resources:
+          requests:
+            cpu: 0.5
+            memoryInGB: 1.0
+        volumeMounts:
+          - name: api-data
+            mountPath: /app/data
+    - name: postgres
+      properties:
+        image: proyectods252acr1525.azurecr.io/postgres:16
+        ports:
+          - port: 5432
+        environmentVariables:
+          - name: POSTGRES_DB
+            value: events
+          - name: POSTGRES_USER
+            value: events
+          - name: POSTGRES_PASSWORD
+            value: events
+        resources:
+          requests:
+            cpu: 1.0
+            memoryInGB: 1.5
+        volumeMounts:
+          - name: postgres-data
+            mountPath: /var/lib/postgresql/data
+    - name: rabbitmq
+      properties:
+        image: proyectods252acr1525.azurecr.io/rabbitmq:3-management
+        ports:
+          - port: 5672
+          - port: 15672
+        environmentVariables:
+          - name: RABBITMQ_DEFAULT_USER
+            value: guest
+          - name: RABBITMQ_DEFAULT_PASS
+            value: guest
+        resources:
+          requests:
+            cpu: 1.0
+            memoryInGB: 1.0
+        volumeMounts:
+          - name: rabbitmq-data
+            mountPath: /var/lib/rabbitmq
+  volumes:
+    - name: api-data
+      emptyDir: {}
+    - name: postgres-data
+      emptyDir: {}
+    - name: rabbitmq-data
+      emptyDir: {}
+  ipAddress:
+    type: Public
+    ports:
+      - protocol: TCP
+        port: 8080

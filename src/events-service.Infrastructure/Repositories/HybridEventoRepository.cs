@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Data.Common;
 using System.Threading;
 using System.Threading.Tasks;
@@ -62,6 +63,62 @@ namespace events_service.Infrastructure.Repositories
             {
                 _logger.LogWarning(ex, "Fallo al actualizar evento {EventoId}. Se intentará guardar en fallback JSON.", evento.Id);
                 await _fallbackStore.SaveAsync(evento, cancellationToken);
+            }
+        }
+
+        /// <summary>
+        /// Obtiene todos los eventos en estado "Publicado".
+        /// </summary>
+        /// <param name="cancellationToken">Token de cancelación.</param>
+        /// <returns>Lista de eventos publicados, o lista vacía si falla.</returns>
+        public async Task<IReadOnlyList<Evento>> GetPublicadosAsync(CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                return await _primary.GetPublicadosAsync(cancellationToken);
+            }
+            catch (Exception ex) when (IsTransientPersistenceFailure(ex))
+            {
+                _logger.LogWarning(ex, "Fallo al consultar eventos publicados en base de datos. Se retornará lista vacía.");
+                return Array.Empty<Evento>();
+            }
+        }
+
+        /// <summary>
+        /// Obtiene todos los eventos de un organizador específico.
+        /// </summary>
+        /// <param name="organizadorId">Identificador único del organizador.</param>
+        /// <param name="cancellationToken">Token de cancelación.</param>
+        /// <returns>Lista de eventos del organizador, o lista vacía si falla.</returns>
+        public async Task<IReadOnlyList<Evento>> GetByOrganizadorIdAsync(Guid organizadorId, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                return await _primary.GetByOrganizadorIdAsync(organizadorId, cancellationToken);
+            }
+            catch (Exception ex) when (IsTransientPersistenceFailure(ex))
+            {
+                _logger.LogWarning(ex, "Fallo al consultar eventos del organizador {OrganizadorId} en base de datos. Se retornará lista vacía.", organizadorId);
+                return Array.Empty<Evento>();
+            }
+        }
+
+        /// <summary>
+        /// Obtiene todos los eventos de un venue específico.
+        /// </summary>
+        /// <param name="venueId">Identificador único del venue.</param>
+        /// <param name="cancellationToken">Token de cancelación.</param>
+        /// <returns>Lista de eventos del venue, o lista vacía si falla.</returns>
+        public async Task<IReadOnlyList<Evento>> GetByVenueIdAsync(Guid venueId, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                return await _primary.GetByVenueIdAsync(venueId, cancellationToken);
+            }
+            catch (Exception ex) when (IsTransientPersistenceFailure(ex))
+            {
+                _logger.LogWarning(ex, "Fallo al consultar eventos del venue {VenueId} en base de datos. Se retornará lista vacía.", venueId);
+                return Array.Empty<Evento>();
             }
         }
 

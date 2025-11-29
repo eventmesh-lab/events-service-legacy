@@ -97,7 +97,7 @@ namespace events_service.Domain.Entities
                 throw new ArgumentException("El evento debe tener al menos una sección.", nameof(secciones));
             }
 
-            var ahora = DateTime.Now;
+            var ahora = DateTime.UtcNow;
 
             var evento = new Evento
             {
@@ -178,7 +178,7 @@ namespace events_service.Domain.Entities
             ReemplazarSecciones(listaSecciones);
             IncrementarVersion();
 
-            RegistrarEvento(new EventoEditado(Id, DateTime.Now));
+            RegistrarEvento(new EventoEditado(Id, DateTime.UtcNow));
         }
 
         public void AgregarSeccion(Seccion seccion)

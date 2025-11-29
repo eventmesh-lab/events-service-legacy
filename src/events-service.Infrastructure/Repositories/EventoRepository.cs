@@ -139,6 +139,53 @@ namespace events_service.Infrastructure.Repositories
         }
 
         /// <summary>
+        /// Obtiene todos los eventos en estado "Publicado".
+        /// </summary>
+        /// <param name="cancellationToken">Token de cancelación.</param>
+        /// <returns>Lista de eventos publicados.</returns>
+        public async Task<IReadOnlyList<Evento>> GetPublicadosAsync(CancellationToken cancellationToken = default)
+        {
+            var entities = await _context.Eventos
+                .Include(e => e.Secciones)
+                .Where(e => e.Estado == "Publicado")
+                .ToListAsync(cancellationToken);
+
+            return entities.Select(MapToDomain).ToList();
+        }
+
+        /// <summary>
+        /// Obtiene todos los eventos de un organizador específico.
+        /// </summary>
+        /// <param name="organizadorId">Identificador único del organizador.</param>
+        /// <param name="cancellationToken">Token de cancelación.</param>
+        /// <returns>Lista de eventos del organizador.</returns>
+        public async Task<IReadOnlyList<Evento>> GetByOrganizadorIdAsync(Guid organizadorId, CancellationToken cancellationToken = default)
+        {
+            var entities = await _context.Eventos
+                .Include(e => e.Secciones)
+                .Where(e => e.OrganizadorId == organizadorId)
+                .ToListAsync(cancellationToken);
+
+            return entities.Select(MapToDomain).ToList();
+        }
+
+        /// <summary>
+        /// Obtiene todos los eventos de un venue específico.
+        /// </summary>
+        /// <param name="venueId">Identificador único del venue.</param>
+        /// <param name="cancellationToken">Token de cancelación.</param>
+        /// <returns>Lista de eventos del venue.</returns>
+        public async Task<IReadOnlyList<Evento>> GetByVenueIdAsync(Guid venueId, CancellationToken cancellationToken = default)
+        {
+            var entities = await _context.Eventos
+                .Include(e => e.Secciones)
+                .Where(e => e.VenueId == venueId)
+                .ToListAsync(cancellationToken);
+
+            return entities.Select(MapToDomain).ToList();
+        }
+
+        /// <summary>
         /// Mapea una entidad de persistencia a un agregado de dominio.
         /// </summary>
         private Evento MapToDomain(EventoEntity entity)

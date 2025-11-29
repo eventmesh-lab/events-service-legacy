@@ -18,7 +18,7 @@ namespace events_service.Domain.Events
         {
             EventoId = eventoId;
             Motivo = motivo;
-            OccurredOn = DateTime.Now;
+            OccurredOn = DateTime.UtcNow;
         }
     }
 }
